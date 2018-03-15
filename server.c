@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
             if (time_table[current_pkt - start_of_seq] == -2 && !last){
                 
                 /* Packet type is Datagram */
-                int seq_num = (current_pkt*MAX_PAYLOAD_SIZE+1) % 30720;
+                int seq_num = (current_pkt*MAX_PACKET_SIZE+1) % 30720;
                 offset = current_pkt*MAX_PAYLOAD_SIZE;
                 sequence_counter = offset / 30720;
                 response_packet.type = 1;
