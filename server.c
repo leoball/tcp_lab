@@ -17,6 +17,8 @@ const int MAX_PACKET_SIZE = 1024;
 const int HEADER_SIZE = 32;
 const int MAX_PAYLOAD_SIZE = 992;
 const int MAX_RETRANS_TIME = 500;
+
+
 int check_time_out(int sock_fd){
     fd_set read_fds;
     FD_ZERO(&read_fds);
@@ -56,10 +58,10 @@ struct packet_info
     int seq_count;
 };
 
-void *transform_addr(struct sockaddr *sa)
+/*void *transform_addr(struct sockaddr *sa)
 {
     return &(((struct sockaddr_in*)sa)->sin_addr);
-}
+}*/
 
 int diff_ms(struct timeval t1, struct timeval t2)
 {
@@ -161,9 +163,9 @@ int main(int argc, char *argv[])
         }
         
         
-        printf("Received filename from %s\n", inet_ntop(cli_addr.sin_family, transform_addr((struct sockaddr *)&cli_addr), s, sizeof s));
+       /* printf("Received filename from %s\n", inet_ntop(cli_addr.sin_family, transform_addr((struct sockaddr *)&cli_addr), s, sizeof s));
         printf("Requested filename: \"%s\"\n", response_packet.data);
-        
+        */
         // buf contains requested file name; if it exists, send back packets (up to 1 KB at a time) to receiver
         
         // create source buffer to fopen and fread designated file

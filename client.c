@@ -22,6 +22,8 @@ const int HEADER_SIZE = 32;
 const int MAX_PAYLOAD_SIZE = 992;
 const int MAX_RETRANS_TIME = 500;
 
+int last_seq_num = 0;
+
 int check_time_out(int sock_fd){
     fd_set read_fds;
     FD_ZERO(&read_fds);
@@ -57,7 +59,6 @@ struct packet_info
     int seq_count;
 };
 
-
 int main(int argc, char *argv[]) {
     int sockfd;
     int rv;
@@ -85,8 +86,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "unfound host.\n");
         exit(1);
     }
-   
-    
     
     memset((char *) &serv_addr, 0, sizeof(serv_addr));//reset memory
     serv_addr.sin_family = AF_INET;
@@ -94,7 +93,7 @@ int main(int argc, char *argv[]) {
     memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
     serv_len = sizeof(serv_addr);
     //connection successful 
-    // client sends the first ack message to server 
+    //client sends the first ack message to server 
     
     struct packet_info response_packet;
     memset((char *) &response_packet, 0, sizeof(response_packet));
@@ -158,17 +157,12 @@ int main(int argc, char *argv[]) {
         if (!fp){
             printf("Error: cannot create received.data.\n");
             exit(1);
-        }
-        
+        }     
     
     //send to the server with name 
     char newFilename[MAX_PACKET_SIZE];
     
     int window_size = 5;
-    
-   
-
-    
     
     struct packet_info *buffer;
     buffer = (struct packet_info *) malloc(window_size * sizeof(struct packet_info));
@@ -185,21 +179,14 @@ int main(int argc, char *argv[]) {
         
         //find that file not found 
         if (response_packet.error == 1) {
-            printf("Error 404 file not found!\n");
+            printf("Error 404: File Not Found!\n");
             return 0;
         }
-        
-       
-        
-        if (response_packet.fin == 1)
-            status = "FIN";
-        else if (response_packet.type == 3)
+                
+        if (response_packet.type == 3)
             status = "Retransmission";
-        else if (response_packet.fin == 2)
-            status = "SYN";
-        else
-            status = "";
-        
+
+
         fprintf(stdout, "Receiving packet %d\n", response_packet.seq_num);
         
         
@@ -227,8 +214,6 @@ int main(int argc, char *argv[]) {
             
             while (1){
                 
-                //printf("%d\t%x\t%d\n", buffer[0].seq_num, crc_ret, buffer[0].max_no);
-                //print_pkt_info(buffer[0]);
                 if ((buffer[0].seq_num+buffer[0].seq_count*30720) / MAX_PAYLOAD_SIZE == start_of_seq) {
                     fwrite(buffer[0].data, sizeof(char), buffer[0].data_size, fp);
                     
@@ -254,28 +239,19 @@ int main(int argc, char *argv[]) {
             fin_packet.fin = 2;
             fin_packet.seq_num = response_packet.seq_num;
             fd_set inSet;
-            struct timeval timeout;
-            int received;
-            
-            FD_ZERO(&inSet);
-            FD_SET(sockfd, &inSet);
-            
-            // MAX_RETRANS_TIME for specified time
-            timeout.tv_sec = 0;
-            timeout.tv_usec = 100000;
-            
-            int retry = 0;
+        
+            int attempt = 1;
             while (1) {
                 sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)& serv_addr, serv_len);
                 printf("Sending packet %d FIN\n", response_packet.seq_num);
                 
-                received = select(sockfd+1, &inSet, NULL, NULL, &timeout);
+                int check_time = check_time_out(sockfd);
                 
                 // if timeout and no acks were received, break and maintain window position
-                if(received < 1)
+                if(check_time < 1)
                 {
-                    retry++;
-                    if (retry >= 2) {
+                    attempt++;
+                    if (attempt == 3) {
                         printf("Transmission finished.\nConnection closed.\n");
                         return 0;
                     }
@@ -288,15 +264,10 @@ int main(int argc, char *argv[]) {
                 if (ack.fin == 2) {
                     printf("Transmission Finished.\nConnection Closed.\n");
                     close(sockfd);
-                    return 0;
-                }
-                
-            }
-            
-            
+                    exit(0);
+                }           
+            }  
         }
-        
     }
-    
-    return 0;
+    exit(0);
 }
