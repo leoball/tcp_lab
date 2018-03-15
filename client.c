@@ -18,8 +18,8 @@
 #include <string.h>
 
 const int MAX_PACKET_SIZE = 1024;
-const int HEADER_SIZE = 52;
-const int MAX_PAYLOAD_SIZE = 972;
+const int HEADER_SIZE = 32;
+const int MAX_PAYLOAD_SIZE = 992;
 const int MAX_RETRANS_TIME = 500;
 
 int check_time_out(int sock_fd){
@@ -245,16 +245,6 @@ int main(int argc, char *argv[]) {
                 else
                     break;
             }
-        }
-        // 2. pkt # in [rcvbase-N,rcvbase-1]
-        else if ((current_pkt - start_of_seq) >= -window_size
-                 && (current_pkt - start_of_seq) < 0){
-//            // send ACK
-//            struct packet_info ack_packet;
-//            memset((char *) &ack_packet, 0, sizeof(ack_packet));
-            response_packet.type = 2;
-            sendto(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *) &serv_addr, serv_len);
-            printf("Sending packet %d DUP\n", response_packet.seq_num);
         }
         
         

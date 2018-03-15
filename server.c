@@ -14,8 +14,8 @@
 
 
 const int MAX_PACKET_SIZE = 1024;
-const int HEADER_SIZE = 52;
-const int MAX_PAYLOAD_SIZE = 972;
+const int HEADER_SIZE = 32;
+const int MAX_PAYLOAD_SIZE = 992;
 const int MAX_RETRANS_TIME = 500;
 int check_time_out(int sock_fd){
     fd_set read_fds;
@@ -225,6 +225,7 @@ int main(int argc, char *argv[])
         
         /* Setup to send back a response packet */
         memset((char *) &response_packet, 0, sizeof(response_packet));
+        /* Determines how many packets we have to send based on the length of the requested file */
         int window_size = cwnd / MAX_PACKET_SIZE;
         int no_of_pkt = (sourceLength + (MAX_PAYLOAD_SIZE-1)) / MAX_PAYLOAD_SIZE;
         response_packet.max_no = no_of_pkt;
@@ -415,6 +416,8 @@ int main(int argc, char *argv[])
                         struct packet_info fin_packet;
                         fin_packet.fin = 1;
                         //send fin
+
+                        fin_packet.seq_no = ack.seq_no + response_packet.data_size + HEADER_SIZE;
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
                         
                         received = select(sockfd+1, &inSet, NULL, NULL, &timeout);
