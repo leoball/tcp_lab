@@ -199,15 +199,15 @@ int main(int argc, char *argv[]) {
         int front = window_curr - window_start;
         if ((front >= 0) && (front < WSIZE)){
             // send ACK
-            struct packet ack_packet;
-            memset((char *) &ack_packet, 0, sizeof(ack_packet));
+            struct packet ACK;
+            memset((char *) &ACK, 0, sizeof(ACK));
 
-            ack_packet.type = 2;
-            ack_packet.seq_num = response_packet.seq_num;
-            ack_packet.seq_count = response_packet.seq_count;
+            ACK.type = 2;
+            ACK.seq_num = response_packet.seq_num;
+            ACK.seq_count = response_packet.seq_count;
 
-            sendto(sockfd, &ack_packet, sizeof(ack_packet), 0, (struct sockaddr *) &serv_addr, serv_len);
-            printf("Sending packet %d %s\n", ack_packet.seq_num, retrans);
+            sendto(sockfd, &ACK, sizeof(ACK), 0, (struct sockaddr *) &serv_addr, serv_len);
+            printf("Sending packet %d %s\n", ACK.seq_num, retrans);
             
             memcpy(&(window[front]), &response_packet, sizeof(struct packet));
             
@@ -239,15 +239,20 @@ int main(int argc, char *argv[]) {
             fin_packet.seq_num = response_packet.seq_num;
             fd_set inSet;
         
+            int retrans = 0;
             int attempt = 1;
             while (1) {
                 sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)& serv_addr, serv_len);
-                printf("Sending packet %d FIN\n", response_packet.seq_num);
+                if (!retrans)
+                    printf("Sending packet %d FIN\n", response_packet.seq_num);
+                else
+                    printf("Sending packet %d FIN Retransmission\n", response_packet.seq_num);
                 
                 int check_time = check_time_out(sockfd);
 
                 if(check_time < 1)
                 {
+                    retrans = 1;
                     attempt++;
                     if (attempt == 3) {
                         printf("Transmission finished.\nConnection closed.\n");
