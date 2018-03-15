@@ -77,7 +77,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr,"Cannot create socket.\n");
         exit(1);
     }
-    fprintf(stderr, "%d\n",sockfd );
 
     //get ip address for the host name 
     struct hostent * server = NULL;
@@ -86,7 +85,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "unfound host.\n");
         exit(1);
     }
-    fprintf(stderr, "%s\n","client connecting..\n" );
    
     
     
@@ -95,7 +93,6 @@ int main(int argc, char *argv[]) {
     serv_addr.sin_port = htons(port);
     memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
     serv_len = sizeof(serv_addr);
-    printf("client connecting .... on port:%d\n",port);
     //connection successful 
     // client sends the first ack message to server 
     
@@ -129,7 +126,7 @@ int main(int argc, char *argv[]) {
         // no timeout, receive the syn ack 
         recvfrom(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *) &serv_addr, &(serv_len));
         if(response_packet.type == 0){
-            printf("Receiving packet SYN-ACK\n");
+            printf("Receiving packet SYN\n");
             break;
         }
         else{
@@ -255,6 +252,7 @@ int main(int argc, char *argv[]) {
             struct packet_info fin_packet;
             memset((char *) &fin_packet, 0, sizeof(fin_packet));
             fin_packet.fin = 2;
+            fin_packet.seq_num = response_packet.seq_num;
             fd_set inSet;
             struct timeval timeout;
             int received;
@@ -269,6 +267,7 @@ int main(int argc, char *argv[]) {
             int retry = 0;
             while (1) {
                 sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)& serv_addr, serv_len);
+                printf("Sending packet %d FIN\n", response_packet.seq_num);
                 
                 received = select(sockfd+1, &inSet, NULL, NULL, &timeout);
                 

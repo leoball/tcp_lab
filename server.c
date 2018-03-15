@@ -138,9 +138,9 @@ int main(int argc, char *argv[])
         while(1){
             sendto(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
             if(!ret)
-                fprintf(stdout, "Sending packet SYN \n");
+                fprintf(stdout, "Sending packet 0 SYN \n");
             else
-                fprintf(stdout, "Sending packet SYN Retransmission\n");
+                fprintf(stdout, "Sending packet 0 SYN Retransmission\n");
         
 
             if (check_time_out(sockfd)){
@@ -374,7 +374,7 @@ int main(int argc, char *argv[])
             if(ack.type == 2) {
                 int pkt = (ack.seq_no + ack.seq_count*30720) / MAX_PAYLOAD_SIZE;
                 time_table[pkt-start_of_seq] = -1;
-                printf("Received ACK %d\n", ack.seq_no);
+                printf("Receiving packet %d\n", ack.seq_no);
             }
             
             int finished = 0;
@@ -431,6 +431,7 @@ int main(int argc, char *argv[])
                         recvfrom(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *) &cli_addr, &cli_len);
                         
                         sendto(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *)&cli_addr, cli_len);
+                        printf("Sending packet %d %d FIN\n", fin_ack.seq_no, cwnd);
                         
                         //fin = 2 means closing connection
                         if (fin_ack.fin == 2) {
