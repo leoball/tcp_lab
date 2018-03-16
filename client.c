@@ -61,8 +61,6 @@ struct packet
 
 int main(int argc, char *argv[]) {
     int sockfd;
-    int rv;
-    int numbytes;
     struct sockaddr_in serv_addr;
     socklen_t serv_len;
     int port;
@@ -70,7 +68,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr,"Error: The correct usage: client <server_hostname> <server_portnumber> <filename>.\n");
         exit(1);
     }
-    
     port = atoi(argv[2]);
    //create a socket 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -78,12 +75,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr,"Cannot create socket.\n");
         exit(1);
     }
-
     //get ip address for the host name 
     struct hostent * server = NULL;
     server = gethostbyname(argv[1]);
     if(!server){
-        fprintf(stderr, "unfound host.\n");
+        fprintf(stderr, "Error: unfound host.\n");
         exit(1);
     }
     
@@ -97,17 +93,16 @@ int main(int argc, char *argv[]) {
     
     struct packet response_packet;
     memset((char *) &response_packet, 0, sizeof(response_packet));
-    
-    
     response_packet.type = 0;
-
+    
     //retrans syn until get synack 
     int ret = 0;
     
-
+    // ============================= Step 1 Client sent first SYN ==============================
     //send first syn
     while(1){
-        if((numbytes = sendto(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *)&serv_addr, serv_len)) == -1){
+        memset((char *) &response_packet, 0, sizeof(response_packet));
+        if(sendto(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *)&serv_addr, serv_len) == -1){
             fprintf(stderr, "%s\n","failed to send first Ack to server." );
             exit(1);
         }
@@ -181,8 +176,7 @@ int main(int argc, char *argv[]) {
             return 0;
         }     
 
-        if (response_packet.type == 2)
-        {
+        if (response_packet.type == 2){
             printf("Error: Missing File Name.\n");
             goto Packet_filename;
         }
@@ -192,8 +186,6 @@ int main(int argc, char *argv[]) {
 
         fprintf(stdout, "Receiving packet %d\n", response_packet.seq_num);
         
-
-        int window_end =  (window_end > response_packet.max_seq_num?response_packet.max_seq_num : WSIZE);
         int window_curr = (response_packet.seq_num + response_packet.reuse_count*30720) / MAX_PAYLOAD_SIZE;
         printf("window_curr = %d\n", window_curr);
         printf("reuse_count = %d\n", response_packet.reuse_count);
@@ -216,6 +208,7 @@ int main(int argc, char *argv[]) {
             if (front >= 0)
                 memcpy(&(window[front]), &response_packet, sizeof(struct packet));
             
+            // fwrite the information in the buffer into the received.data
             while (1){
 
                 int first_packet_in_window = (window[0].seq_num+window[0].reuse_count*30720) / MAX_PACKET_SIZE;
@@ -224,10 +217,10 @@ int main(int argc, char *argv[]) {
                     
                     // update window
                     int y = 0;
-                    for (y = 0; y < WSIZE-1; y++){
+                    for (y = 0; y < WSIZE - 1; y++){
                         memcpy(&(window[y]), &(window[y+1]), sizeof(struct packet));
                     }
-                    //memset(&(window[WSIZE-1]), 0, sizeof(struct packet));
+                   
                     window_start++;
                 }
                 else
