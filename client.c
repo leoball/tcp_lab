@@ -226,6 +226,15 @@ int main(int argc, char *argv[]) {
                     break;
             }
         }
+
+        else if ((window_curr - window_start >= WSIZE) && (window_curr - window_start < 0)){
+//            // send ACK
+//            struct packet_info ack_packet;
+//            memset((char *) &ack_packet, 0, sizeof(ack_packet));
+            response_packet.type = 2;
+            sendto(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *) &serv_addr, serv_len);
+            printf("Sending packet %d\n", response_packet.seq_num);
+        }
         
         //memset((char *) &response_packet.data, 0, sizeof(response_packet.data));
         
