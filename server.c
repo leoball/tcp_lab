@@ -49,7 +49,7 @@ struct packet
     double time;
     char data[MAX_PAYLOAD_SIZE];
     int data_size;
-    int seq_count;
+    int reuse_count;
 };
 
 int diff_ms(struct timeval t1, struct timeval t2){
@@ -224,7 +224,7 @@ int main(int argc, char *argv[]){
                 packet_sent.type = 1;
                 packet_sent.sequence_num = (window_curr*MAX_PACKET_SIZE+1) % 30720;
                 packet_sent.max_num = total_packet;
-                packet_sent.seq_count = offset / 30720;
+                packet_sent.reuse_count = offset / 30720;
                 packet_sent.fin = 0;
                 
                 /* Check if this is the last packet among the paritioned packets */
@@ -319,7 +319,7 @@ int main(int argc, char *argv[]){
             recvfrom(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *) &cli_addr, &cli_len);
             
             if(ack.type == 2) {
-                int pkt = (ack.sequence_num + ack.seq_count*30720) / MAX_PAYLOAD_SIZE;
+                int pkt = (ack.sequence_num + ack.reuse_count*30720) / MAX_PAYLOAD_SIZE;
                 ACK_table[pkt-window_start] = -1;
                 printf("Receiving packet %d\n", ack.sequence_num);
             }

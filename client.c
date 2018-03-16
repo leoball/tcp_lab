@@ -57,7 +57,7 @@ struct packet
     double time;
     char data[MAX_PAYLOAD_SIZE];
     int data_size;
-    int seq_count;
+    int reuse_count;
 };
 
 int main(int argc, char *argv[]) {
@@ -189,19 +189,19 @@ int main(int argc, char *argv[]) {
         
 
         int window_end =  (window_end > response_packet.max_seq_num?response_packet.max_seq_num : WSIZE);
-        int window_curr = (response_packet.seq_num + response_packet.seq_count*30720) / MAX_PAYLOAD_SIZE;
+        int window_curr = (response_packet.seq_num + response_packet.reuse_count*30720) / MAX_PAYLOAD_SIZE;
 
 
         // 1. pkt # in [rcvbase, rcvbase+N-1]
         int front = window_curr - window_start;
-        if ((front < WSIZE)){
+        if ((front >= 0) && (front < WSIZE)){
             // send ACK
             struct packet ACK;
             memset((char *) &ACK, 0, sizeof(ACK));
 
             ACK.type = 2;
             ACK.seq_num = response_packet.seq_num;
-            ACK.seq_count = response_packet.seq_count;
+            ACK.reuse_count = response_packet.reuse_count;
 
             sendto(sockfd, &ACK, sizeof(ACK), 0, (struct sockaddr *) &serv_addr, serv_len);
             printf("Sending packet %d %s\n", ACK.seq_num, retrans);
@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
             
             while (1){
 
-                int first_packet_in_window = (window[0].seq_num+window[0].seq_count*30720) / MAX_PAYLOAD_SIZE;
+                int first_packet_in_window = (window[0].seq_num+window[0].reuse_count*30720) / MAX_PAYLOAD_SIZE;
                 if (first_packet_in_window == window_start) {
                     fwrite(window[0].data, sizeof(char), window[0].data_size, fp);
                     
@@ -227,7 +227,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        else if ((window_curr - window_start >= WSIZE) && (window_curr - window_start < 0)){
+        else if ((window_curr - window_start >= WSIZE) || (window_curr - window_start < 0)){
 //            // send ACK
 //            struct packet_info ack_packet;
 //            memset((char *) &ack_packet, 0, sizeof(ack_packet));
