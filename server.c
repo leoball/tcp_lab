@@ -171,11 +171,19 @@ int main(int argc, char *argv[]){
         fclose(fp);
         
         memset((char *) &packet_sent, 0, sizeof(packet_sent));
+<<<<<<< HEAD
+       
+=======
         //>0 : time since sending out the packet
         //-2 : empty
         //-1 : received ACK
+>>>>>>> origin/master
         
         int wnd_size = cwnd / MAX_PACKET_SIZE;
+        // ====== In ACK table it stored time for transmission =======
+        // if it's positive or 0 means packet has been sent not yet acked
+        // -2 means not yet sent
+        // -1 means acked 
         int* ACK_table = (int*) malloc(wnd_size*sizeof(int));
         int i = 0;
         for (i = 0; i < wnd_size; i++)
@@ -245,6 +253,7 @@ int main(int argc, char *argv[]){
                     printf("Sending packet %d %d %s\n", packet_sent.sequence_num, cwnd, status);
                 }
             }
+            resendpack:
                 // check time out for the first packet 
                 if (ACK_table[0] >= 0){
                     struct timeval end;
@@ -295,6 +304,7 @@ int main(int argc, char *argv[]){
             int finished = 0;
             if (last_flag) {
                 int n = 0;
+                // check ack table to see if there is unacked packet 
                 for(n=0; n < wnd_size; n++) {
                     if (ACK_table[n] > 0) {
                         finished = 0;
@@ -305,6 +315,7 @@ int main(int argc, char *argv[]){
                 }
                 if (finished == 0){
                     /* Resend */
+                    /*
                     for (i = window_lb; i<window_lb+5; i++){
                         if (ACK_table[i-window_lb] >= 0){
                             struct timeval end;
@@ -321,11 +332,12 @@ int main(int argc, char *argv[]){
                                 ACK_table[i-window_lb] = diff_ms(end, start);
                             }
                         }
-                    }
+                    }*/
+                    goto resendpack;
 
                 }
                 else {
-                    //send fin and MAX_RETRANS_TIMEing for fin ACK
+                    // send the fin packet to the client 
                     while (1) {
                         struct packet fin_packet;
                         memset((char *) &fin_packet, 0, sizeof(packet_sent));
