@@ -244,16 +244,18 @@ int main(int argc, char *argv[]){
                 memcpy(&(window[window_curr - window_start]), &packet_sent, sizeof(struct packet));
                 window[window_curr - window_start].type = 3;
                 /* Send the packet  */
-                sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
-                
-                if(window_curr < window_curr_end)
-                    window_curr++;
-                char* status = "";
-                if (packet_sent.type == 3)
-                    status = "Retransmission";
-                else if (packet_sent.fin == 1)
-                    status = "FIN";
-                printf("Sending packet %d %d %s\n", packet_sent.sequence_num, cwnd, status);
+                if (packet_sent.fin != 1){
+                    sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
+                    
+                    if(window_curr < window_curr_end)
+                        window_curr++;
+                    char* status = "";
+                    if (packet_sent.type == 3)
+                        status = "Retransmission";
+                    else if (packet_sent.fin == 1)
+                        status = "FIN";
+                    printf("Sending packet %d %d %s\n", packet_sent.sequence_num, cwnd, status);
+                }
             }
             
             /* Resend */
@@ -385,7 +387,7 @@ int main(int argc, char *argv[]){
                         ///////
                         
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
-                        printf("Sending packet %d %d EOF\n", fin_packet.sequence_num, cwnd);
+                        printf("Sending packet %d %d FIN\n", fin_packet.sequence_num, cwnd);
                         
                         received = select(sockfd+1, &inSet, NULL, NULL, &timeout);
                         
@@ -397,9 +399,9 @@ int main(int argc, char *argv[]){
                         struct packet fin_ack;
                         recvfrom(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *) &cli_addr, &cli_len);
                         
-                        sendto(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *)&cli_addr, cli_len);
+/*                        sendto(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *)&cli_addr, cli_len);
                         printf("Sending packet %d %d FIN\n", fin_ack.sequence_num, cwnd);
-                        
+    */                    
                         //fin = 2 means closing connection
                         if (fin_ack.fin == 2) {
                             printf("Transmission Finished.\nConnection Closed.\n");

@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
         
 
         int window_end =  (window_end > response_packet.max_seq_num?response_packet.max_seq_num : WSIZE);
-        int window_curr = (response_packet.seq_num + response_packet.reuse_count*30720) / MAX_PACKET_SIZE;
+        int window_curr = (response_packet.seq_num + response_packet.reuse_count*30720) / MAX_PAYLOAD_SIZE;
         printf("window_curr = %d\n", window_curr);
         printf("reuse_count = %d\n", response_packet.reuse_count);
 
