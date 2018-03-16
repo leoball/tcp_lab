@@ -47,7 +47,7 @@ struct my_packet
     int fin;
     int error;
     double time;
-    char data[MAX_PAYLOAD_SIZE];
+    char payload[MAX_PAYLOAD_SIZE];
     int data_size;
     int seq_count;
 };
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]){
         //---------------------------------------------------------
         // create file_buffer buffer to fopen and fread designated file
         char *file_buffer = NULL;
-        FILE *fp = fopen(packet_sent.data, "r");
+        FILE *fp = fopen(packet_sent.payload, "r");
         if(!fp){
             packet_sent.error = 1;
             sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
@@ -240,8 +240,8 @@ int main(int argc, char *argv[]){
                 
                 //write the data into the sentpacket 
                 int cur_data_size = ( (file_bufferLength - offset) < MAX_PAYLOAD_SIZE ? file_bufferLength - offset:MAX_PAYLOAD_SIZE);
-                memcpy(packet_sent.data, file_buffer+offset, cur_data_size);
-                packet_sent.data_size = cur_data_size ;
+                memcpy(packet_sent.payload, file_buffer+offset, cur_data_size);
+                packet_sent.payload_size = cur_data_size ;
                 memcpy(&(current_packet_window[current_pkt - start_of_packet]), &packet_sent, sizeof(struct my_packet));
                 current_packet_window[current_pkt - start_of_packet].type = 3;
                 /* Send the packet  */
@@ -364,7 +364,7 @@ int main(int argc, char *argv[]){
                         fin_packet.fin = 1;
                         //send fin
 
-                        fin_packet.sequence_num = ack.sequence_num + packet_sent.data_size + HEADER_SIZE;
+                        fin_packet.sequence_num = ack.sequence_num + packet_sent.payload_size + HEADER_SIZE;
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
                         
                         received = select(sockfd+1, &inSet, NULL, NULL, &timeout);
