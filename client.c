@@ -195,6 +195,8 @@ int main(int argc, char *argv[]) {
         int front = window_curr - window_start;
         printf("front = %d\n\n\n", front);
         if (front < WSIZE){
+            if (response_packet.fin == 1)
+                goto ISSUE_FIN;
             // send ACK
             struct packet ACK;
             memset((char *) &ACK, 0, sizeof(ACK));
@@ -239,7 +241,7 @@ int main(int argc, char *argv[]) {
         }*/
         
         //memset((char *) &response_packet.data, 0, sizeof(response_packet.data));
-        
+ISSUE_FIN:        
         if (response_packet.fin == 1) {
             struct packet fin_packet;
             memset((char *) &fin_packet, 0, sizeof(fin_packet));
@@ -270,6 +272,10 @@ int main(int argc, char *argv[]) {
                     continue;
                 }
                 // otherwise, fetch the ack
+                printf("Transmission Finished.\nConnection Closed.\n");
+                close(sockfd);
+                exit(0);
+                
                 struct packet ack;
                 recvfrom(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *) &serv_addr, &(serv_len));
                 
