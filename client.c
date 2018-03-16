@@ -194,6 +194,7 @@ int main(int argc, char *argv[]) {
 
         // 1. pkt # in [rcvbase, rcvbase+N-1]
         int front = window_curr - window_start;
+        printf("front = %d\n\n\n", front);
         if (front < WSIZE){
             // send ACK
             struct packet ACK;

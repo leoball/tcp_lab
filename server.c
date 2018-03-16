@@ -384,7 +384,7 @@ int main(int argc, char *argv[]){
                         ///////
                         memset((char *) &fin_packet, 0, sizeof(packet_sent));
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
-                        printf("Sending packet %d %d EOF\n", fin_ack.sequence_num, cwnd);
+                        printf("Sending packet %d %d EOF\n", fin_packet.sequence_num, cwnd);
                         
                         received = select(sockfd+1, &inSet, NULL, NULL, &timeout);
                         
