@@ -13,10 +13,10 @@
 
 
 
-const int MAX_PACKET_SIZE = 1024;
-const int HEADER_SIZE = 32;
-const int MAX_PAYLOAD_SIZE = 992;
-const int MAX_RETRANS_TIME = 500;
+#define MAX_PACKET_SIZE 1024
+#define HEADER_SIZE 32
+#define MAX_PAYLOAD_SIZE 992
+#define MAX_RETRANS_TIME 500
 #define SYN 0
 #define DATA 1
 #define ACK 2
@@ -39,7 +39,7 @@ int check_time_out(int sock_fd){
 
 }
 
-struct my_packet
+struct packet
 {   
     int type;
     int sequence_num;
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]){
     int sockfd;
     int port;
     int cwnd = 5120;
-    struct my_packet packet_sent;
+    struct packet packet_sent;
     int last = 0;
     int file_bufferLength;
     
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]){
         //---------------------------------------------------------
         // create file_buffer buffer to fopen and fread designated file
         char *file_buffer = NULL;
-        FILE *fp = fopen(packet_sent.payload, "r");
+        FILE *fp = fopen(packet_sent.data, "r");
         if(!fp){
             packet_sent.error = 1;
             sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
@@ -201,10 +201,10 @@ int main(int argc, char *argv[]){
         int total_packet = (file_bufferLength / MAX_PAYLOAD_SIZE) + 1;
         packet_sent.max_num = total_packet;
         packet_sent.sequence_num = 0;
-        int start_of_packet = 0, current_pkt = 0;
-        int current_seq_end = (wnd_size > total_packet? total_packet:wnd_size);
-        struct my_packet *current_packet_window;
-        current_packet_window = (struct my_packet *) malloc(wnd_size * sizeof(struct my_packet));
+        int window_start = 0, window_curr = 0;
+        int window_curr_end = (wnd_size > total_packet? total_packet:wnd_size);
+        struct packet *window;
+        window = (struct packet *) malloc(wnd_size * sizeof(struct packet));
         
        
         struct timeval start;
@@ -217,18 +217,18 @@ int main(int argc, char *argv[]){
         int offset = 0;
         while(1){
             /* If next available seq # in window, send packet */
-            if (ACK_table[current_pkt - start_of_packet] == -2 && !last){
+            if (ACK_table[window_curr - window_start] == -2 && !last){
                 
                 /* Packet type is Datagram */
-                offset = current_pkt*MAX_PAYLOAD_SIZE;
+                offset = window_curr*MAX_PAYLOAD_SIZE;
                 packet_sent.type = 1;
-                packet_sent.sequence_num = (current_pkt*MAX_PACKET_SIZE+1) % 30720;
+                packet_sent.sequence_num = (window_curr*MAX_PACKET_SIZE+1) % 30720;
                 packet_sent.max_num = total_packet;
                 packet_sent.seq_count = offset / 30720;
                 packet_sent.fin = 0;
                 
                 /* Check if this is the last packet among the paritioned packets */
-                if (current_pkt >= total_packet-1) {
+                if (window_curr >= total_packet-1) {
                     last = 1;
                 }
                 
@@ -236,19 +236,19 @@ int main(int argc, char *argv[]){
                 struct timeval end;
                 gettimeofday(&end, NULL);
                 int time_diff = diff_ms(end, start);
-                ACK_table[current_pkt - start_of_packet] = time_diff;
+                ACK_table[window_curr - window_start] = time_diff;
                 
                 //write the data into the sentpacket 
                 int cur_data_size = ( (file_bufferLength - offset) < MAX_PAYLOAD_SIZE ? file_bufferLength - offset:MAX_PAYLOAD_SIZE);
-                memcpy(packet_sent.payload, file_buffer+offset, cur_data_size);
-                packet_sent.payload_size = cur_data_size ;
-                memcpy(&(current_packet_window[current_pkt - start_of_packet]), &packet_sent, sizeof(struct my_packet));
-                current_packet_window[current_pkt - start_of_packet].type = 3;
+                memcpy(packet_sent.data, file_buffer+offset, cur_data_size);
+                packet_sent.data_size = cur_data_size ;
+                memcpy(&(window[window_curr - window_start]), &packet_sent, sizeof(struct packet));
+                window[window_curr - window_start].type = 3;
                 /* Send the packet  */
                 sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
                 
-                if(current_pkt < current_seq_end)
-                    current_pkt++;
+                if(window_curr < window_curr_end)
+                    window_curr++;
                 char* status = "";
                 if (packet_sent.type == 3)
                     status = "Retransmission";
@@ -258,19 +258,19 @@ int main(int argc, char *argv[]){
             }
             
             /* Resend */
-            for (i = start_of_packet; i<current_seq_end; i++){
-                if (ACK_table[i-start_of_packet] > 0){
+            for (i = window_start; i<window_curr_end; i++){
+                if (ACK_table[i-window_start] > 0){
                     struct timeval end;
                     gettimeofday(&end, NULL);
                     int time_diff = diff_ms(end, start);
-                    packet_sent.time = time_diff - ACK_table[i-start_of_packet];
-                    if (time_diff - ACK_table[i-start_of_packet] >= MAX_RETRANS_TIME){
-                        if ((current_packet_window[i - start_of_packet]).sequence_num
-                            == (current_packet_window[i - start_of_packet]).max_num)
-                            (current_packet_window[i - start_of_packet]).fin = 1;
-                        sendto(sockfd, &(current_packet_window[i - start_of_packet]), sizeof((current_packet_window[i - start_of_packet])), 0, (struct sockaddr *)&cli_addr, cli_len);
-                        printf("Sending packet %d %d Retransmission\n", current_packet_window[i - start_of_packet].sequence_num, cwnd);
-                        ACK_table[i-start_of_packet] = diff_ms(end, start);
+                    packet_sent.time = time_diff - ACK_table[i-window_start];
+                    if (time_diff - ACK_table[i-window_start] >= MAX_RETRANS_TIME){
+                        if ((window[i - window_start]).sequence_num
+                            == (window[i - window_start]).max_num)
+                            (window[i - window_start]).fin = 1;
+                        sendto(sockfd, &(window[i - window_start]), sizeof((window[i - window_start])), 0, (struct sockaddr *)&cli_addr, cli_len);
+                        printf("Sending packet %d %d Retransmission\n", window[i - window_start].sequence_num, cwnd);
+                        ACK_table[i-window_start] = diff_ms(end, start);
                     }
                 }
             }
@@ -280,15 +280,15 @@ int main(int argc, char *argv[]){
                 //Move the time table and packet window to position 0
                 for (i = 0; i<wnd_size-1; i++){
                     ACK_table[i] = ACK_table[i+1];
-                    memcpy(&(current_packet_window[i]), &(current_packet_window[i+1]), sizeof(struct my_packet));
+                    memcpy(&(window[i]), &(window[i+1]), sizeof(struct packet));
                 }
                 ACK_table[wnd_size-1] = -2;
-                memset(&(current_packet_window[wnd_size-1]), 0, sizeof(struct my_packet));
-                start_of_packet++;
+                memset(&(window[wnd_size-1]), 0, sizeof(struct packet));
+                window_start++;
                 
-                if (current_seq_end<total_packet)
-                    current_seq_end++;
-                wnd_size = current_seq_end - start_of_packet;
+                if (window_curr_end<total_packet)
+                    window_curr_end++;
+                wnd_size = window_curr_end - window_start;
             }
             
             
@@ -315,12 +315,12 @@ int main(int argc, char *argv[]){
                 continue;
             }
             // otherwise, fetch the ack
-            struct my_packet ack;
+            struct packet ack;
             recvfrom(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *) &cli_addr, &cli_len);
             
             if(ack.type == 2) {
                 int pkt = (ack.sequence_num + ack.seq_count*30720) / MAX_PAYLOAD_SIZE;
-                ACK_table[pkt-start_of_packet] = -1;
+                ACK_table[pkt-window_start] = -1;
                 printf("Receiving packet %d\n", ack.sequence_num);
             }
             
@@ -337,21 +337,21 @@ int main(int argc, char *argv[]){
                 }
                 if (finished == 0){
                     /* Resend */
-                    for (i = start_of_packet; i<start_of_packet+5; i++){
-                        if (ACK_table[i-start_of_packet] >= 0){
+                    for (i = window_start; i<window_start+5; i++){
+                        if (ACK_table[i-window_start] >= 0){
                             struct timeval end;
                             gettimeofday(&end, NULL);
                             int time_diff = diff_ms(end, start);
-                            packet_sent.time = time_diff - ACK_table[i-start_of_packet];
-                            if (time_diff - ACK_table[i-start_of_packet] >= MAX_RETRANS_TIME){
-                                // printf("(%d)\n", time_diff - ACK_table[i-start_of_packet]);
+                            packet_sent.time = time_diff - ACK_table[i-window_start];
+                            if (time_diff - ACK_table[i-window_start] >= MAX_RETRANS_TIME){
+                                // printf("(%d)\n", time_diff - ACK_table[i-window_start]);
                                 packet_sent.type = 3;
-                                if ((current_packet_window[i - start_of_packet]).sequence_num
-                                    == (current_packet_window[i - start_of_packet]).max_num)
-                                    (current_packet_window[i - start_of_packet]).fin = 1;
-                                sendto(sockfd, &(current_packet_window[i - start_of_packet]), sizeof((current_packet_window[i - start_of_packet])), 0, (struct sockaddr *)&cli_addr, cli_len);
-                                printf("Sending packet %d %d Retransmission\n", current_packet_window[i - start_of_packet].sequence_num, cwnd);
-                                ACK_table[i-start_of_packet] = diff_ms(end, start);
+                                if ((window[i - window_start]).sequence_num
+                                    == (window[i - window_start]).max_num)
+                                    (window[i - window_start]).fin = 1;
+                                sendto(sockfd, &(window[i - window_start]), sizeof((window[i - window_start])), 0, (struct sockaddr *)&cli_addr, cli_len);
+                                printf("Sending packet %d %d Retransmission\n", window[i - window_start].sequence_num, cwnd);
+                                ACK_table[i-window_start] = diff_ms(end, start);
                             }
                         }
                     }
@@ -360,11 +360,11 @@ int main(int argc, char *argv[]){
                 else {
                     //send fin and MAX_RETRANS_TIMEing for fin ACK
                     while (1) {
-                        struct my_packet fin_packet;
+                        struct packet fin_packet;
                         fin_packet.fin = 1;
                         //send fin
 
-                        fin_packet.sequence_num = ack.sequence_num + packet_sent.payload_size + HEADER_SIZE;
+                        fin_packet.sequence_num = ack.sequence_num + packet_sent.data_size + HEADER_SIZE;
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
                         
                         received = select(sockfd+1, &inSet, NULL, NULL, &timeout);
@@ -374,7 +374,7 @@ int main(int argc, char *argv[]){
                             continue;
                         }
 
-                        struct my_packet fin_ack;
+                        struct packet fin_ack;
                         recvfrom(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *) &cli_addr, &cli_len);
                         
                         sendto(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *)&cli_addr, cli_len);

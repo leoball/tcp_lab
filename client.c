@@ -17,11 +17,11 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-const int MAX_PACKET_SIZE = 1024;
-const int HEADER_SIZE = 32;
-const int MAX_PAYLOAD_SIZE = 992;
-const int MAX_RETRANS_TIME = 500;
-const int WSIZE = 5;
+#define MAX_PACKET_SIZE 1024
+#define HEADER_SIZE 32
+#define MAX_PAYLOAD_SIZE 992
+#define MAX_RETRANS_TIME 500
+#define WSIZE 5
 
 int last_seq_num = 0;
 
