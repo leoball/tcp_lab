@@ -280,7 +280,6 @@ int main(int argc, char *argv[]){
                     gettimeofday(&end, NULL);
                     int time_diff = diff_ms(end, start);
                     packet_sent.time = time_diff - ACK_table[0];
-                    fprintf(stderr, "%Time for pack is %d\n",packet_sent.time);
                     if (packet_sent.time  >= MAX_RETRANS_TIME){
                         if ((window[0]).sequence_num == (window[0]).max_num)
                             (window[0]).fin = 1;

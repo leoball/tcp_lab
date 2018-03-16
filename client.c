@@ -207,7 +207,8 @@ int main(int argc, char *argv[]) {
             sendto(sockfd, &ACK, sizeof(ACK), 0, (struct sockaddr *) &serv_addr, serv_len);
             printf("Sending packet %d %s\n", ACK.seq_num, retrans);
             
-            memcpy(&(window[front]), &response_packet, sizeof(struct packet));
+            if (front >= 0)
+                memcpy(&(window[front]), &response_packet, sizeof(struct packet));
             
             while (1){
 

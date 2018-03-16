@@ -63,6 +63,7 @@ int main(int argc, char *argv[]){
     struct packet packet_sent;
     int last = 0;
     int file_bufferLength;
+    int last_seq_num = 0;
     
     // Check for correct argument length
 	if (argc != 2) {
@@ -216,12 +217,10 @@ int main(int argc, char *argv[]){
         /* start the file transfer process */
         int offset = 0;
         while(1){
-            /* If next available seq # in window, send packet */
+            // send the un sent packet 
             if (ACK_table[window_curr - window_start] == -2 && !last){
-                
-                /* Packet type is Datagram */
-                offset = window_curr*MAX_PAYLOAD_SIZE;
                 packet_sent.type = 1;
+                offset = window_curr*MAX_PAYLOAD_SIZE;
                 packet_sent.sequence_num = (window_curr*MAX_PACKET_SIZE+1) % 30720;
                 packet_sent.max_num = total_packet;
                 packet_sent.reuse_count = offset / 30720;
@@ -230,6 +229,7 @@ int main(int argc, char *argv[]){
                 /* Check if this is the last packet among the paritioned packets */
                 if (window_curr >= total_packet-1) {
                     last = 1;
+                    last_seq_num = (window_curr*MAX_PACKET_SIZE+1) % 30720;
                 }
                 
                 /* Set time table */
@@ -275,14 +275,13 @@ int main(int argc, char *argv[]){
                 }
             }*/
 
-                if (ACK_table[0] > 0){
+                if (ACK_table[0] >= 0){
                     struct timeval end;
                     gettimeofday(&end, NULL);
                     int time_diff = diff_ms(end, start);
                     packet_sent.time = time_diff - ACK_table[0];
-                    if (time_diff - ACK_table[0] >= MAX_RETRANS_TIME){
-                        if ((window[0]).sequence_num
-                            == (window[0]).max_num)
+                    if (packet_sent.time  >= MAX_RETRANS_TIME){
+                        if ((window[0]).sequence_num == (window[0]).max_num)
                             (window[0]).fin = 1;
                         sendto(sockfd, &(window[0]), sizeof((window[0])), 0, (struct sockaddr *)&cli_addr, cli_len);
                         printf("Sending packet %d %d Retransmission\n", window[0].sequence_num, cwnd);
@@ -304,7 +303,7 @@ int main(int argc, char *argv[]){
                 
                 if (window_curr_end<total_packet)
                     window_curr_end++;
-                window_curr_end = window_start + 5;
+                //window_curr_end = window_start + 5;
             }
             
             
@@ -377,11 +376,15 @@ int main(int argc, char *argv[]){
                     //send fin and MAX_RETRANS_TIMEing for fin ACK
                     while (1) {
                         struct packet fin_packet;
+                        memset((char *) &fin_packet, 0, sizeof(packet_sent));
                         fin_packet.fin = 1;
                         //send fin
-
-                        fin_packet.sequence_num = ack.sequence_num + packet_sent.data_size + HEADER_SIZE;
+                        
+                        fin_packet.sequence_num = last_seq_num + packet_sent.data_size + HEADER_SIZE;
+                        ///////
+                        
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
+                        printf("Sending packet %d %d EOF\n", fin_packet.sequence_num, cwnd);
                         
                         received = select(sockfd+1, &inSet, NULL, NULL, &timeout);
                         
@@ -400,12 +403,12 @@ int main(int argc, char *argv[]){
                         if (fin_ack.fin == 2) {
                             printf("Transmission Finished.\nConnection Closed.\n");
                             close(sockfd);
-                            return 0;
+                            exit(0);
                         }
                     }
                 }
             }
         }
-        return 0;
+        exit(0);
     }
 }
