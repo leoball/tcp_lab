@@ -54,7 +54,6 @@ struct packet
     int max_seq_num;
     int fin;
     int error;
-    double time;
     char data[MAX_PAYLOAD_SIZE];
     int data_size;
     int reuse_count;
@@ -195,8 +194,9 @@ int main(int argc, char *argv[]) {
         
 
         int window_end =  (window_end > response_packet.max_seq_num?response_packet.max_seq_num : WSIZE);
-        int window_curr = (response_packet.seq_num + response_packet.reuse_count*30720) / MAX_PAYLOAD_SIZE;
-
+        int window_curr = (response_packet.seq_num + response_packet.reuse_count*30720) / MAX_PACKET_SIZE;
+        printf("window_curr = %d\n", window_curr);
+        printf("reuse_count = %d\n", response_packet.reuse_count);
 
         // 1. pkt # in [rcvbase, rcvbase+N-1]
         int front = window_curr - window_start;
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
             
             while (1){
 
-                int first_packet_in_window = (window[0].seq_num+window[0].reuse_count*30720) / MAX_PAYLOAD_SIZE;
+                int first_packet_in_window = (window[0].seq_num+window[0].reuse_count*30720) / MAX_PACKET_SIZE;
                 if (first_packet_in_window == window_start) {
                     fwrite(window[0].data, sizeof(char), window[0].data_size, fp);
                     

@@ -46,7 +46,6 @@ struct packet
     int max_num;
     int fin;
     int error;
-    double time;
     char data[MAX_PAYLOAD_SIZE];
     int data_size;
     int reuse_count;
@@ -223,7 +222,7 @@ int main(int argc, char *argv[]){
                 offset = window_curr*MAX_PAYLOAD_SIZE;
                 packet_sent.sequence_num = (window_curr*MAX_PACKET_SIZE+1) % 30720;
                 packet_sent.max_num = total_packet;
-                packet_sent.reuse_count = offset / 30720;
+                packet_sent.reuse_count = (window_curr*MAX_PACKET_SIZE+1) / 30720;
                 packet_sent.fin = 0;
                 
                 /* Check if this is the last packet among the paritioned packets */
@@ -279,8 +278,8 @@ int main(int argc, char *argv[]){
                     struct timeval end;
                     gettimeofday(&end, NULL);
                     int time_diff = diff_ms(end, start);
-                    packet_sent.time = time_diff - ACK_table[0];
-                    if (packet_sent.time  >= MAX_RETRANS_TIME){
+                    int temp_time = time_diff - ACK_table[0];
+                    if (temp_time  >= MAX_RETRANS_TIME){
                         if ((window[0]).sequence_num == (window[0]).max_num)
                             (window[0]).fin = 1;
                         sendto(sockfd, &(window[0]), sizeof((window[0])), 0, (struct sockaddr *)&cli_addr, cli_len);
@@ -334,7 +333,9 @@ int main(int argc, char *argv[]){
             recvfrom(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *) &cli_addr, &cli_len);
             
             if(ack.type == 2) {
-                int pkt = (ack.sequence_num + ack.reuse_count*30720) / MAX_PAYLOAD_SIZE;
+                int pkt = (ack.sequence_num + ack.reuse_count*30720) / MAX_PACKET_SIZE;
+
+                printf("No. %d\n", pkt);
                 ACK_table[pkt-window_start] = -1;
                 printf("Receiving packet %d\n", ack.sequence_num);
             }
@@ -357,7 +358,7 @@ int main(int argc, char *argv[]){
                             struct timeval end;
                             gettimeofday(&end, NULL);
                             int time_diff = diff_ms(end, start);
-                            packet_sent.time = time_diff - ACK_table[i-window_start];
+                            //packet_sent.time = time_diff - ACK_table[i-window_start];
                             if (time_diff - ACK_table[i-window_start] >= MAX_RETRANS_TIME){
                                 // printf("(%d)\n", time_diff - ACK_table[i-window_start]);
                                 packet_sent.type = 3;
