@@ -171,14 +171,7 @@ int main(int argc, char *argv[]){
         fclose(fp);
         
         memset((char *) &packet_sent, 0, sizeof(packet_sent));
-<<<<<<< HEAD
-       
-=======
-        //>0 : time since sending out the packet
-        //-2 : empty
-        //-1 : received ACK
->>>>>>> origin/master
-        
+
         int wnd_size = cwnd / MAX_PACKET_SIZE;
         // ====== In ACK table it stored time for transmission =======
         // if it's positive or 0 means packet has been sent not yet acked
