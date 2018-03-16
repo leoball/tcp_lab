@@ -22,6 +22,7 @@
 #define ACK 2
 #define RETRANS 3
 #define FILENAME 4
+#define FILE_404_NOT_FOUND 5
 
 // function used to find timeout for the packet 
 int check_time_out(int sock_fd){
@@ -41,11 +42,10 @@ int check_time_out(int sock_fd){
 
 struct packet
 {   
-    int type;
+    int type; //5 filenotfound
     int sequence_num;
     int max_num;
     int fin;
-    int error;
     char data[MAX_PAYLOAD_SIZE];
     int data_size;
     int reuse_count;
@@ -148,55 +148,38 @@ int main(int argc, char *argv[]){
         char *file_buffer = NULL;
         FILE *fp = fopen(packet_sent.data, "r");
         if(!fp){
-            packet_sent.error = 1;
+            packet_sent.type = FILE_404_NOT_FOUND;
             sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
             printf("404: file not found!\n");
             exit(1);
         }
         // read the file to a buffer and then send the data from buffer to client 
-        if(fseek(fp, 0L, SEEK_END) == 0){
+        if(fseek(fp, 0, SEEK_END) == 0){
             long file_size = ftell(fp);
-            if (file_size == -1){
-                packet_sent.error = 1;
-                sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
-                printf("Error: file not found!\n");
-                exit(1);
-            }
             file_buffer = malloc(sizeof(char) * (file_size + 1));
-            if (fseek(fp, 0L, SEEK_SET) != 0){
-                packet_sent.error = 1;
-                sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
-                printf("Error: file not found!\n");
-                exit(1);
-            }
-            
-            // set file_buffer to file data
+            fseek(fp, 0, SEEK_SET);
+
             file_bufferLength = fread(file_buffer, sizeof(char), file_size, fp);
             if (file_bufferLength == 0){
-                packet_sent.error = 1;
-                // send packet with error = 1 to represent no file found
+                packet_sent.type = FILE_404_NOT_FOUND;
                 sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
-                printf("Error: file not found!\n");
+                printf("Error: Cannot read from file!\n");
                 exit(1);
             }
             file_buffer[file_bufferLength] = '\0';
         }
         fclose(fp);
         
-        /* Setup to send back a response packet */
         memset((char *) &packet_sent, 0, sizeof(packet_sent));
-        /* Determines how many packets we have to send based on the length of the requested file */
-         //Iterating through the window
-        //-2 for not yet sent
-        //-1 for already ACK'ed
-        //otherwise for not yet ACK'ed
+        //>0 : time since sending out the packet
+        //-2 : empty
+        //-1 : received ACK
         
         int wnd_size = cwnd / MAX_PACKET_SIZE;
         int* ACK_table = (int*) malloc(wnd_size*sizeof(int));
-        int i;
+        int i = 0;
         for (i = 0; i < wnd_size; i++)
             ACK_table[i] = -2;
-        
         
         int total_packet = (file_bufferLength / MAX_PAYLOAD_SIZE) + 1;
         packet_sent.max_num = total_packet;

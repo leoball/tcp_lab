@@ -22,6 +22,7 @@
 #define MAX_PAYLOAD_SIZE 992
 #define MAX_RETRANS_TIME 500
 #define WSIZE 5
+#define FILE_404_NOT_FOUND 5
 
 int last_seq_num = 0;
 
@@ -48,12 +49,12 @@ struct packet
     //ACK: 2
     //Retransmission: 3
     //filename: 4 
+    //file not found: 5
     
     int type;
     int seq_num;
     int max_seq_num;
     int fin;
-    int error;
     char data[MAX_PAYLOAD_SIZE];
     int data_size;
     int reuse_count;
@@ -171,7 +172,7 @@ int main(int argc, char *argv[]) {
         recvfrom(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *) &serv_addr, &(serv_len));
         
         //find that file not found 
-        if (response_packet.error == 1) {
+        if (response_packet.type == FILE_404_NOT_FOUND) {
             printf("Error 404: File Not Found!\n");
             return 0;
         }     
