@@ -181,6 +181,12 @@ int main(int argc, char *argv[]) {
             printf("Error 404: File Not Found!\n");
             return 0;
         }     
+
+        if (response_packet.type == 2)
+        {
+            printf("Error: Missing File Name.\n");
+            goto Packet_filename;
+        }
         char* retrans = "";
         if (response_packet.type == 3)
             retrans = "Retransmission";
