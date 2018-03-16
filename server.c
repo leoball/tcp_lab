@@ -63,6 +63,7 @@ int main(int argc, char *argv[]){
     struct packet packet_sent;
     int last = 0;
     int file_bufferLength;
+    int last_seq_num = 0;
     
     // Check for correct argument length
 	if (argc != 2) {
@@ -230,6 +231,7 @@ int main(int argc, char *argv[]){
                 /* Check if this is the last packet among the paritioned packets */
                 if (window_curr >= total_packet-1) {
                     last = 1;
+                    last_seq_num = (window_curr*MAX_PACKET_SIZE+1) % 30720;
                 }
                 
                 /* Set time table */
@@ -377,12 +379,13 @@ int main(int argc, char *argv[]){
                     //send fin and MAX_RETRANS_TIMEing for fin ACK
                     while (1) {
                         struct packet fin_packet;
+                        memset((char *) &fin_packet, 0, sizeof(packet_sent));
                         fin_packet.fin = 1;
                         //send fin
-
-                        fin_packet.sequence_num = ack.sequence_num + packet_sent.data_size + HEADER_SIZE;
+                        
+                        fin_packet.sequence_num = last_seq_num + packet_sent.data_size + HEADER_SIZE;
                         ///////
-                        memset((char *) &fin_packet, 0, sizeof(packet_sent));
+                        
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
                         printf("Sending packet %d %d EOF\n", fin_packet.sequence_num, cwnd);
                         
