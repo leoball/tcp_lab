@@ -277,7 +277,7 @@ int main(int argc, char *argv[]){
                 }
             }*/
 
-                if (ACK_table[0] > 0){
+                if (ACK_table[0] >= 0){
                     struct timeval end;
                     gettimeofday(&end, NULL);
                     int time_diff = diff_ms(end, start);
@@ -406,12 +406,12 @@ int main(int argc, char *argv[]){
                         if (fin_ack.fin == 2) {
                             printf("Transmission Finished.\nConnection Closed.\n");
                             close(sockfd);
-                            return 0;
+                            exit(0);
                         }
                     }
                 }
             }
         }
-        return 0;
+        exit(0);
     }
 }
