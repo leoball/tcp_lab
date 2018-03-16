@@ -258,7 +258,7 @@ int main(int argc, char *argv[]){
             }
             
             /* Resend */
-            for (i = window_start; i<window_curr_end; i++){
+            /*for (i = window_start; i<window_curr_end; i++){
                 if (ACK_table[i-window_start] > 0){
                     struct timeval end;
                     gettimeofday(&end, NULL);
@@ -273,7 +273,23 @@ int main(int argc, char *argv[]){
                         ACK_table[i-window_start] = diff_ms(end, start);
                     }
                 }
-            }
+            }*/
+
+                if (ACK_table[0] > 0){
+                    struct timeval end;
+                    gettimeofday(&end, NULL);
+                    int time_diff = diff_ms(end, start);
+                    packet_sent.time = time_diff - ACK_table[0];
+                    if (time_diff - ACK_table[0] >= MAX_RETRANS_TIME){
+                        if ((window[0]).sequence_num
+                            == (window[0]).max_num)
+                            (window[0]).fin = 1;
+                        sendto(sockfd, &(window[0]), sizeof((window[0])), 0, (struct sockaddr *)&cli_addr, cli_len);
+                        printf("Sending packet %d %d Retransmission\n", window[0].sequence_num, cwnd);
+                        ACK_table[0] = diff_ms(end, start);
+                    }
+                }
+            
             
             // 3b
             if (ACK_table[0] == -1){
@@ -288,7 +304,7 @@ int main(int argc, char *argv[]){
                 
                 if (window_curr_end<total_packet)
                     window_curr_end++;
-                wnd_size = window_curr_end - window_start;
+                window_curr_end = window_start + 5;
             }
             
             
