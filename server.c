@@ -381,7 +381,10 @@ int main(int argc, char *argv[]){
                         //send fin
 
                         fin_packet.sequence_num = ack.sequence_num + packet_sent.data_size + HEADER_SIZE;
+                        ///////
+                        memset((char *) &fin_packet, 0, sizeof(packet_sent));
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
+                        printf("Sending packet %d %d EOF\n", fin_ack.sequence_num, cwnd);
                         
                         received = select(sockfd+1, &inSet, NULL, NULL, &timeout);
                         
