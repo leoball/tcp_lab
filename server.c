@@ -217,12 +217,10 @@ int main(int argc, char *argv[]){
         /* start the file transfer process */
         int offset = 0;
         while(1){
-            /* If next available seq # in window, send packet */
+            // send the un sent packet 
             if (ACK_table[window_curr - window_start] == -2 && !last){
-                
-                /* Packet type is Datagram */
-                offset = window_curr*MAX_PAYLOAD_SIZE;
                 packet_sent.type = 1;
+                offset = window_curr*MAX_PAYLOAD_SIZE;
                 packet_sent.sequence_num = (window_curr*MAX_PACKET_SIZE+1) % 30720;
                 packet_sent.max_num = total_packet;
                 packet_sent.reuse_count = offset / 30720;
@@ -282,9 +280,9 @@ int main(int argc, char *argv[]){
                     gettimeofday(&end, NULL);
                     int time_diff = diff_ms(end, start);
                     packet_sent.time = time_diff - ACK_table[0];
-                    if (time_diff - ACK_table[0] >= MAX_RETRANS_TIME){
-                        if ((window[0]).sequence_num
-                            == (window[0]).max_num)
+                    fprintf(stderr, "%Time for pack is %d\n",packet_sent.time);
+                    if (packet_sent.time  >= MAX_RETRANS_TIME){
+                        if ((window[0]).sequence_num == (window[0]).max_num)
                             (window[0]).fin = 1;
                         sendto(sockfd, &(window[0]), sizeof((window[0])), 0, (struct sockaddr *)&cli_addr, cli_len);
                         printf("Sending packet %d %d Retransmission\n", window[0].sequence_num, cwnd);
@@ -306,7 +304,7 @@ int main(int argc, char *argv[]){
                 
                 if (window_curr_end<total_packet)
                     window_curr_end++;
-                window_curr_end = window_start + 5;
+                //window_curr_end = window_start + 5;
             }
             
             
