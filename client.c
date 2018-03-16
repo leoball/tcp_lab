@@ -188,10 +188,7 @@ int main(int argc, char *argv[]) {
         fprintf(stdout, "Receiving packet %d\n", response_packet.seq_num);
         
 
-        int window_end = WSIZE;
-        if (window_end > response_packet.max_seq_num)
-            window_end = response_packet.max_seq_num;
-        
+        int window_end =  (window_end > response_packet.max_seq_num?response_packet.max_seq_num : WSIZE);
         int window_curr = (response_packet.seq_num + response_packet.seq_count*30720) / MAX_PAYLOAD_SIZE;
 
 
