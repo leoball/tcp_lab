@@ -185,13 +185,13 @@ int main(int argc, char *argv[]){
         
         /* Setup to send back a response packet */
         memset((char *) &packet_sent, 0, sizeof(packet_sent));
-        /* Determines how many packets we have to send based on the length of the requested file */
-         //Iterating through the window
-        //-2 for not yet sent
-        //-1 for already ACK'ed
-        //otherwise for not yet ACK'ed
+       
         
         int wnd_size = cwnd / MAX_PACKET_SIZE;
+        // ====== In ACK table it stored time for transmission =======
+        // if it's positive or 0 means packet has been sent not yet acked
+        // -2 means not yet sent
+        // -1 means acked 
         int* ACK_table = (int*) malloc(wnd_size*sizeof(int));
         int i;
         for (i = 0; i < wnd_size; i++)
