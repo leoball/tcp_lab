@@ -262,6 +262,7 @@ int main(int argc, char *argv[]){
                     printf("Sending packet %d %d %s\n", packet_sent.sequence_num, cwnd, status);
                 }
             }
+            resendpack:
                 // check time out for the first packet 
                 if (ACK_table[0] >= 0){
                     struct timeval end;
@@ -312,6 +313,7 @@ int main(int argc, char *argv[]){
             int finished = 0;
             if (last_flag) {
                 int n = 0;
+                // check ack table to see if there is unacked packet 
                 for(n=0; n < wnd_size; n++) {
                     if (ACK_table[n] > 0) {
                         finished = 0;
@@ -322,6 +324,7 @@ int main(int argc, char *argv[]){
                 }
                 if (finished == 0){
                     /* Resend */
+                    /*
                     for (i = window_lb; i<window_lb+5; i++){
                         if (ACK_table[i-window_lb] >= 0){
                             struct timeval end;
@@ -338,11 +341,12 @@ int main(int argc, char *argv[]){
                                 ACK_table[i-window_lb] = diff_ms(end, start);
                             }
                         }
-                    }
+                    }*/
+                    goto resendpack;
 
                 }
                 else {
-                    //send fin and MAX_RETRANS_TIMEing for fin ACK
+                    // send the fin packet to the client 
                     while (1) {
                         struct packet fin_packet;
                         memset((char *) &fin_packet, 0, sizeof(packet_sent));
