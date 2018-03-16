@@ -47,7 +47,7 @@ struct my_packet
     int fin;
     int error;
     double time;
-    char payload[MAX_PAYLOAD_SIZE];
+    char data[MAX_PAYLOAD_SIZE];
     int data_size;
     int seq_count;
 };
