@@ -275,15 +275,7 @@ ISSUE_FIN:
                 printf("Transmission Finished.\nConnection Closed.\n");
                 close(sockfd);
                 exit(0);
-                
-                struct packet ack;
-                recvfrom(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *) &serv_addr, &(serv_len));
-                
-                if (ack.fin == 2) {
-                    printf("Transmission Finished.\nConnection Closed.\n");
-                    close(sockfd);
-                    exit(0);
-                }           
+        
             }  
         }
     }

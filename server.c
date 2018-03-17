@@ -331,6 +331,8 @@ int main(int argc, char *argv[]){
                 }
                 else {
                     // send the fin packet to the client 
+                    int attmept = 0;
+                    char* suffix = "";
                     while (1) {
                         struct packet fin_packet;
                         memset((char *) &fin_packet, 0, sizeof(packet_sent));
@@ -341,10 +343,20 @@ int main(int argc, char *argv[]){
                         ///////
                         
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
-                        printf("Sending packet %d %d FIN\n", fin_packet.sequence_num, cwnd);
+                        printf("Sending packet %d %d FIN %s\n", fin_packet.sequence_num, cwnd, suffix);
                         
                         if(check_time_out(sockfd))
-                            continue;
+                        {
+                            suffix = "Retransmission";
+                            attmept += 1;
+                            if (attmept <= 3)
+                                continue;
+                            else{
+                                printf("Transmission Finished.\nConnection Closed.\n");
+                                close(sockfd);
+                                exit(0);
+                            }
+                        }
 
                         struct packet fin_ack;
                         recvfrom(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *) &cli_addr, &cli_len);
