@@ -245,14 +245,18 @@ int main(int argc, char *argv[]){
 
                 if (ACK_table[0] >= 0){
                     struct timeval end;
+
                     gettimeofday(&end, NULL);
                     int time_diff = time_difference(end, start);
                     int temp_time = time_diff - ACK_table[0];
+
                     if (temp_time  >= MAX_RETRANS_TIME){
                         if ((window[0]).sequence_num == total_packet)
                             (window[0]).fin = 1;
+
                         sendto(sockfd, &(window[0]), sizeof((window[0])), 0, (struct sockaddr *)&cli_addr, cli_len);
                         printf("Sending packet %d %d Retransmission\n", window[0].sequence_num, CWND);
+
                         ACK_table[0] = time_difference(end, start);
                     }
                 }
@@ -263,10 +267,9 @@ int main(int argc, char *argv[]){
                     ACK_table[i] = ACK_table[i+1];
                     memcpy(&(window[i]), &(window[i+1]), sizeof(struct packet));
                 }
-
+                window_lb++;
                 memset(&(window[wnd_size-1]), 0, sizeof(struct packet));
                 ACK_table[wnd_size - 1] = - 2;
-                window_lb++;
                 
                 if (window_ub < total_packet)
                     window_ub++;
