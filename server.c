@@ -37,26 +37,26 @@ int check_time_out(int sock_fd){
         return 0;
 }
 
+int time_difference(struct timeval t1, struct timeval t2){
+    int difference = (((t1.tv_sec - t2.tv_sec) * 1000000) + (t1.tv_usec - t2.tv_usec))/1000;
+    return difference;
+}
+
 struct packet
 {   
     int type;
     int sequence_num;
-    int max_num;
     int fin;
     char data[MAX_PAYLOAD_SIZE];
     int data_size;
     int reuse_count;
 };
 
-int diff_ms(struct timeval t1, struct timeval t2){
-    return (((t1.tv_sec - t2.tv_sec) * 1000000) + (t1.tv_usec - t2.tv_usec))/1000;
-}
-
 int main(int argc, char *argv[]){
     int sockfd;
     int port;
-    int cwnd = 5120;
-    struct packet packet_sent;
+    int CWND = 5120;
+    struct packet data_packet;
     int last_flag = 0;
     int file_bufferLength;
     int last_seq_num = 0;
@@ -100,23 +100,23 @@ int main(int argc, char *argv[]){
         int ret = 0;
         //get first syn
         while(1){
-            if( recvfrom(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, &cli_len) == - 1){
+            if( recvfrom(sockfd, &data_packet, sizeof(data_packet), 0, (struct sockaddr *)&cli_addr, &cli_len) == - 1){
                 printf("Error: failed to receive ACK.\n");
                 exit(1);
             }
-            if(packet_sent.type == SYN){
-                fprintf(stderr, "Receiving packet %d\n",packet_sent.sequence_num);
+            if(data_packet.type == SYN){
+                fprintf(stderr, "Receiving packet %d\n",data_packet.sequence_num);
                 break;
             }
             else
                 continue;
             }
-        memset((char *) &packet_sent, 0, sizeof(packet_sent));
+        memset((char *) &data_packet, 0, sizeof(data_packet));
         //send synack 
         ret = 0;
         // get file name 
         while(1){
-            sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
+            sendto(sockfd, &data_packet, sizeof(data_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
             if(!ret)
                 fprintf(stdout, "Sending packet 0 SYN \n");
             else
@@ -129,8 +129,8 @@ int main(int argc, char *argv[]){
                 continue;
             }
             else{
-                recvfrom(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *) &serv_addr, &(serv_len));
-                if(packet_sent.type == FILENAME)
+                recvfrom(sockfd, &data_packet, sizeof(data_packet), 0, (struct sockaddr *) &serv_addr, &(serv_len));
+                if(data_packet.type == FILENAME)
                     break;
                 else{
                     fprintf(stderr, "%s\n","did not receive expected filename.\n" );
@@ -145,10 +145,10 @@ int main(int argc, char *argv[]){
         //---------------------------------------------------------
         // create file_buffer buffer to fopen and fread designated file
         char *file_buffer = NULL;
-        FILE *fp = fopen(packet_sent.data, "r");
+        FILE *fp = fopen(data_packet.data, "r");
         if(!fp){
-            packet_sent.type = FILE_404_NOT_FOUND;
-            sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
+            data_packet.type = FILE_404_NOT_FOUND;
+            sendto(sockfd, &data_packet, sizeof(data_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
             printf("404: file not found!\n");
             last_flag = 1;
             finished = 1;
@@ -163,8 +163,8 @@ int main(int argc, char *argv[]){
 
             file_bufferLength = fread(file_buffer, sizeof(char), file_size, fp);
             if (file_bufferLength == 0){
-                packet_sent.type = FILE_404_NOT_FOUND;
-                sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
+                data_packet.type = FILE_404_NOT_FOUND;
+                sendto(sockfd, &data_packet, sizeof(data_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
                 printf("Error: Cannot read from file!\n");
                 exit(1);
             }
@@ -172,9 +172,12 @@ int main(int argc, char *argv[]){
         }
         fclose(fp);
         
-        memset((char *) &packet_sent, 0, sizeof(packet_sent));
 
-        int wnd_size = cwnd / MAX_PACKET_SIZE;
+
+
+        memset((char *) &data_packet, 0, sizeof(data_packet));
+
+        int wnd_size = CWND / MAX_PACKET_SIZE;
         // ====== In ACK table it stored time for transmission =======
         // if it's positive or 0 means packet has been sent not yet acked
         // -2 means not yet sent
@@ -184,28 +187,27 @@ int main(int argc, char *argv[]){
         for (i = 0; i < wnd_size; i++)
             ACK_table[i] = -2;
         
+      
         int total_packet = (file_bufferLength / MAX_PAYLOAD_SIZE) + 1;
-        packet_sent.max_num = total_packet;
-        packet_sent.sequence_num = 0;
- 
         int window_lb = 0, window_curr = 0;
         int window_ub = (wnd_size > total_packet? total_packet:wnd_size);
-
-        
-        struct packet *window;
-        window = (struct packet *) malloc(wnd_size * sizeof(struct packet));
-        
         int offset = 0;
+        data_packet.sequence_num = 0;
+
+        struct packet *window;
+        window = (struct packet *) malloc(wnd_size * sizeof(struct packet)); 
+        
         struct timeval start;
         gettimeofday(&start, NULL);
         while(1){
             if (ACK_table[window_curr - window_lb] == - 2 && !last_flag){
 
-                packet_sent.type = 1;
-                packet_sent.sequence_num = (window_curr * MAX_PACKET_SIZE + 1) % 30720;
-                packet_sent.max_num = total_packet;
-                packet_sent.reuse_count = (window_curr * MAX_PACKET_SIZE + 1) / 30720;
-                packet_sent.fin = 0;
+                data_packet.type = 1;
+                data_packet.fin = 0;
+                data_packet.sequence_num = (window_curr * MAX_PACKET_SIZE + 1) % 30720;
+                
+                data_packet.reuse_count = (window_curr * MAX_PACKET_SIZE + 1) / 30720;
+                
                 offset = window_curr * MAX_PAYLOAD_SIZE;
                 
                 if (window_curr >= total_packet - 1) {
@@ -215,28 +217,28 @@ int main(int argc, char *argv[]){
                 
 
                 int cur_data_size = ( (file_bufferLength - offset) < MAX_PAYLOAD_SIZE ? file_bufferLength - offset:MAX_PAYLOAD_SIZE);
-                memcpy(packet_sent.data, file_buffer+offset, cur_data_size);
-                packet_sent.data_size = cur_data_size ;
-                memcpy(&(window[window_curr - window_lb]), &packet_sent, sizeof(struct packet));
+                memcpy(data_packet.data, file_buffer+offset, cur_data_size);
+                data_packet.data_size = cur_data_size ;
+                memcpy(&(window[window_curr - window_lb]), &data_packet, sizeof(struct packet));
                 window[window_curr - window_lb].type = RETRANS;
 
 
 
                 struct timeval end;
                 gettimeofday(&end, NULL);
-                int time_diff = diff_ms(end, start);
+                int time_diff = time_difference(end, start);
                 ACK_table[window_curr - window_lb] = time_diff;
 
-                if (packet_sent.fin != 1){
-                    sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
+                if (data_packet.fin != 1){
+                    sendto(sockfd, &data_packet, sizeof(data_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
                     
                     if(window_curr < window_ub)
                         window_curr++;
                     char* suffix = "";
-                    if (packet_sent.type == 3)
+                    if (data_packet.type == 3)
                         suffix = "Retransmission";
                     
-                    printf("Sending packet %d %d %s\n", packet_sent.sequence_num, cwnd, suffix);
+                    printf("Sending packet %d %d %s\n", data_packet.sequence_num, CWND, suffix);
                 }
             }
             resendpack:
@@ -244,14 +246,14 @@ int main(int argc, char *argv[]){
                 if (ACK_table[0] >= 0){
                     struct timeval end;
                     gettimeofday(&end, NULL);
-                    int time_diff = diff_ms(end, start);
+                    int time_diff = time_difference(end, start);
                     int temp_time = time_diff - ACK_table[0];
                     if (temp_time  >= MAX_RETRANS_TIME){
-                        if ((window[0]).sequence_num == (window[0]).max_num)
+                        if ((window[0]).sequence_num == total_packet)
                             (window[0]).fin = 1;
                         sendto(sockfd, &(window[0]), sizeof((window[0])), 0, (struct sockaddr *)&cli_addr, cli_len);
-                        printf("Sending packet %d %d Retransmission\n", window[0].sequence_num, cwnd);
-                        ACK_table[0] = diff_ms(end, start);
+                        printf("Sending packet %d %d Retransmission\n", window[0].sequence_num, CWND);
+                        ACK_table[0] = time_difference(end, start);
                     }
                 }
 
@@ -308,15 +310,15 @@ SendFin:
                     char* suffix = "";
                     while (1) {
                         struct packet fin_packet;
-                        memset((char *) &fin_packet, 0, sizeof(packet_sent));
+                        memset((char *) &fin_packet, 0, sizeof(data_packet));
                         fin_packet.fin = 1;
                         
-                        fin_packet.sequence_num = last_seq_num + packet_sent.data_size + HEADER_SIZE;
+                        fin_packet.sequence_num = last_seq_num + data_packet.data_size + HEADER_SIZE;
                         if(file_not_found_flag)
                             fin_packet.sequence_num = 0;
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
                         /*if (!file_not_found_flag)*/
-                        printf("Sending packet %d %d FIN %s\n", fin_packet.sequence_num, cwnd, suffix);
+                        printf("Sending packet %d %d FIN %s\n", fin_packet.sequence_num, CWND, suffix);
                         
                         if(check_time_out(sockfd))
                         {

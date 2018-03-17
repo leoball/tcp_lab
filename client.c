@@ -49,17 +49,8 @@ int check_time_out(int sock_fd){
 
 struct packet
 {
-    //Packet Types:
-    //SYN and SYN ACK: 0
-    //Datagram: 1
-    //ACK: 2
-    //Retransmission: 3
-    //filename: 4 
-    //file not found: 5
-    
     int type;
     int seq_num;
-    int max_seq_num;
     int fin;
     char data[MAX_PAYLOAD_SIZE];
     int data_size;
@@ -100,7 +91,7 @@ int main(int argc, char *argv[]) {
     
     struct packet response_packet;
     memset((char *) &response_packet, 0, sizeof(response_packet));
-    response_packet.type = 0;
+    response_packet.type = SYN;
     
     //retrans syn until get synack 
     int ret = 0;
@@ -124,7 +115,7 @@ int main(int argc, char *argv[]) {
         }
         // no timeout, receive the syn ack 
         recvfrom(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *) &serv_addr, &(serv_len));
-        if(response_packet.type == 0){
+        if(response_packet.type == SYN){
             printf("Receiving packet SYN\n");
             break;
         }
@@ -137,7 +128,7 @@ int main(int argc, char *argv[]) {
     Packet_filename:
         memset((char *) &response_packet, 0, sizeof(response_packet));
         sprintf(response_packet.data, "%s", argv[3]);
-        response_packet.type = 4;
+        response_packet.type = FILENAME;
 
         if((sendto(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *)&serv_addr, serv_len)) == -1){
             fprintf(stderr, "send packet error.\n");
@@ -180,12 +171,12 @@ int main(int argc, char *argv[]) {
             goto ISSUE_FIN;
         }     
 
-        if (response_packet.type == 2){
+        if (response_packet.type == ACK_flag){
             printf("Error: Missing File Name.\n");
             goto Packet_filename;
         }
         char* retrans = "";
-        if (response_packet.type == 3)
+        if (response_packet.type == RETRANS)
             retrans = "Retransmission";
 
         fprintf(stdout, "Receiving packet %d\n", response_packet.seq_num);
@@ -203,7 +194,7 @@ int main(int argc, char *argv[]) {
             struct packet ACK;
             memset((char *) &ACK, 0, sizeof(ACK));
 
-            ACK.type = 2;
+            ACK.type = ACK_flag;
             ACK.seq_num = response_packet.seq_num;
             ACK.reuse_count = response_packet.reuse_count;
 
@@ -218,8 +209,7 @@ int main(int argc, char *argv[]) {
                 int first_packet_in_window = (window[0].seq_num+window[0].reuse_count*30720) / MAX_PACKET_SIZE;
                 if (first_packet_in_window == window_start) {
                     fwrite(window[0].data, sizeof(char), window[0].data_size, fp);
-                    
-                    // update window
+
                     int y = 0;
                     for (y = 0; y < WSIZE - 1; y++){
                         memcpy(&(window[y]), &(window[y+1]), sizeof(struct packet));
