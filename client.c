@@ -23,6 +23,12 @@
 #define MAX_RETRANS_TIME 500
 #define WSIZE 5
 #define FILE_404_NOT_FOUND 5
+#define SYN 0
+#define DATA 1
+#define ACK 2
+#define RETRANS 3
+#define FILENAME 4
+#define FILE_404_NOT_FOUND 5
 
 int last_seq_num = 0;
 
@@ -99,8 +105,6 @@ int main(int argc, char *argv[]) {
     //retrans syn until get synack 
     int ret = 0;
     
-    // ============================= Step 1 Client sent first SYN ==============================
-    //send first syn
     while(1){
         memset((char *) &response_packet, 0, sizeof(response_packet));
         if(sendto(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *)&serv_addr, serv_len) == -1){
@@ -171,7 +175,6 @@ int main(int argc, char *argv[]) {
     {
         recvfrom(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *) &serv_addr, &(serv_len));
         
-        //find that file not found 
         if (response_packet.type == FILE_404_NOT_FOUND) {
             printf("Error 404: File Not Found!\n");
             return 0;
@@ -191,13 +194,12 @@ int main(int argc, char *argv[]) {
         printf("window_curr = %d\n", window_curr);
         printf("reuse_count = %d\n", response_packet.reuse_count);
 
-        // 1. pkt # in [rcvbase, rcvbase+N-1]
         int front = window_curr - window_start;
         printf("front = %d\n\n\n", front);
         if (front < WSIZE){
             if (response_packet.fin == 1)
                 goto ISSUE_FIN;
-            // send ACK
+
             struct packet ACK;
             memset((char *) &ACK, 0, sizeof(ACK));
 
@@ -211,7 +213,6 @@ int main(int argc, char *argv[]) {
             if (front >= 0)
                 memcpy(&(window[front]), &response_packet, sizeof(struct packet));
             
-            // fwrite the information in the buffer into the received.data
             while (1){
 
                 int first_packet_in_window = (window[0].seq_num+window[0].reuse_count*30720) / MAX_PACKET_SIZE;
@@ -231,16 +232,6 @@ int main(int argc, char *argv[]) {
             }
         }
 
-/*        else if ((window_curr - window_start >= WSIZE) || (window_curr - window_start < 0)){
-//            // send ACK
-//            struct packet_info ack_packet;
-//            memset((char *) &ack_packet, 0, sizeof(ack_packet));
-            response_packet.type = 2;
-            sendto(sockfd, &response_packet, sizeof(response_packet), 0, (struct sockaddr *) &serv_addr, serv_len);
-            printf("Sending packet %d\n", response_packet.seq_num);
-        }*/
-        
-        //memset((char *) &response_packet.data, 0, sizeof(response_packet.data));
 ISSUE_FIN:        
         if (response_packet.fin == 1) {
             struct packet fin_packet;
@@ -271,7 +262,6 @@ ISSUE_FIN:
                     }
                     continue;
                 }
-                // otherwise, fetch the ack
                 printf("Transmission Finished.\nConnection Closed.\n");
                 close(sockfd);
                 exit(0);

@@ -11,8 +11,6 @@
 #include <netdb.h>
 #include <sys/time.h>
 
-
-
 #define MAX_PACKET_SIZE 1024
 #define HEADER_SIZE 32
 #define MAX_PAYLOAD_SIZE 992
@@ -37,12 +35,11 @@ int check_time_out(int sock_fd){
         return 1;
     else
         return 0;
-
 }
 
 struct packet
 {   
-    int type; //5 filenotfound
+    int type;
     int sequence_num;
     int max_num;
     int fin;
@@ -185,22 +182,20 @@ int main(int argc, char *argv[]){
         int total_packet = (file_bufferLength / MAX_PAYLOAD_SIZE) + 1;
         packet_sent.max_num = total_packet;
         packet_sent.sequence_num = 0;
-        // window lower bound and upper bound and the position for the packet needs to be sent 
+ 
         int window_lb = 0, window_curr = 0;
         int window_ub = (wnd_size > total_packet? total_packet:wnd_size);
-        //create an array to store all the packet 
+
         
         struct packet *window;
         window = (struct packet *) malloc(wnd_size * sizeof(struct packet));
         
-        /* start the file transfer process */
         int offset = 0;
         struct timeval start;
         gettimeofday(&start, NULL);
         while(1){
-             // send the unsent packet 
             if (ACK_table[window_curr - window_lb] == - 2 && !last_flag){
-                //initialize the packet 
+
                 packet_sent.type = 1;
                 packet_sent.sequence_num = (window_curr * MAX_PACKET_SIZE + 1) % 30720;
                 packet_sent.max_num = total_packet;
@@ -208,15 +203,12 @@ int main(int argc, char *argv[]){
                 packet_sent.fin = 0;
                 offset = window_curr * MAX_PAYLOAD_SIZE;
                 
-                /* Check if this is the last packet among the paritioned packets */
                 if (window_curr >= total_packet - 1) {
                     last_flag = 1;
                     last_seq_num = (window_curr * MAX_PACKET_SIZE+1) % 30720;
                 }
                 
-                
-                
-                //write the data into the sentpacket 
+
                 int cur_data_size = ( (file_bufferLength - offset) < MAX_PAYLOAD_SIZE ? file_bufferLength - offset:MAX_PAYLOAD_SIZE);
                 memcpy(packet_sent.data, file_buffer+offset, cur_data_size);
                 packet_sent.data_size = cur_data_size ;
@@ -224,12 +216,12 @@ int main(int argc, char *argv[]){
                 window[window_curr - window_lb].type = RETRANS;
 
 
-                /* Set time table */
+
                 struct timeval end;
                 gettimeofday(&end, NULL);
                 int time_diff = diff_ms(end, start);
                 ACK_table[window_curr - window_lb] = time_diff;
-                /* Send the packet  */
+
                 if (packet_sent.fin != 1){
                     sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
                     
@@ -247,7 +239,7 @@ int main(int argc, char *argv[]){
                 }
             }
             resendpack:
-                // check time out for the first packet 
+
                 if (ACK_table[0] >= 0){
                     struct timeval end;
                     gettimeofday(&end, NULL);
@@ -261,14 +253,14 @@ int main(int argc, char *argv[]){
                         ACK_table[0] = diff_ms(end, start);
                     }
                 }
-                // if first packet acked shift the window 
+
             if (ACK_table[0] == - 1){
                
                 for (i = 0; i < wnd_size - 1; i++){
                     ACK_table[i] = ACK_table[i+1];
                     memcpy(&(window[i]), &(window[i+1]), sizeof(struct packet));
                 }
-                //initialize new packet on window 
+
                 memset(&(window[wnd_size-1]), 0, sizeof(struct packet));
                 ACK_table[wnd_size - 1] = - 2;
                 window_lb++;
@@ -278,8 +270,6 @@ int main(int argc, char *argv[]){
                 
             }
             
-            
-            // 3a) ACK(n) in [sendbase,sendbase+N]: mark pkt n as received
             if(check_time_out(sockfd))
                 continue;
             
@@ -297,7 +287,6 @@ int main(int argc, char *argv[]){
             int finished = 0;
             if (last_flag) {
                 int n = 0;
-                // check ack table to see if there is unacked packet 
                 for(n=0; n < wnd_size; n++) {
                     if (ACK_table[n] > 0) {
                         finished = 0;
@@ -307,40 +296,17 @@ int main(int argc, char *argv[]){
                         finished = 1;
                 }
                 if (finished == 0){
-                    /* Resend */
-                    /*
-                    for (i = window_lb; i<window_lb+5; i++){
-                        if (ACK_table[i-window_lb] >= 0){
-                            struct timeval end;
-                            gettimeofday(&end, NULL);
-                            int time_diff = diff_ms(end, start);
-                            //packet_sent.time = time_diff - ACK_table[i-window_lb];
-                            if (time_diff - ACK_table[i-window_lb] >= MAX_RETRANS_TIME){
-                                packet_sent.type = 3;
-                                if ((window[i - window_lb]).sequence_num
-                                    == (window[i - window_lb]).max_num)
-                                    (window[i - window_lb]).fin = 1;
-                                sendto(sockfd, &(window[i - window_lb]), sizeof((window[i - window_lb])), 0, (struct sockaddr *)&cli_addr, cli_len);
-                                printf("Sending packet %d %d Retransmission\n", window[i - window_lb].sequence_num, cwnd);
-                                ACK_table[i-window_lb] = diff_ms(end, start);
-                            }
-                        }
-                    }*/
                     goto resendpack;
-
                 }
                 else {
-                    // send the fin packet to the client 
                     int attmept = 0;
                     char* suffix = "";
                     while (1) {
                         struct packet fin_packet;
                         memset((char *) &fin_packet, 0, sizeof(packet_sent));
                         fin_packet.fin = 1;
-                        //send fin
                         
                         fin_packet.sequence_num = last_seq_num + packet_sent.data_size + HEADER_SIZE;
-                        ///////
                         
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
                         printf("Sending packet %d %d FIN %s\n", fin_packet.sequence_num, cwnd, suffix);
@@ -361,10 +327,6 @@ int main(int argc, char *argv[]){
                         struct packet fin_ack;
                         recvfrom(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *) &cli_addr, &cli_len);
                         
-/*                        sendto(sockfd, &fin_ack, sizeof(fin_ack), 0, (struct sockaddr *)&cli_addr, cli_len);
-                        printf("Sending packet %d %d FIN\n", fin_ack.sequence_num, cwnd);
-    */                    
-                        //fin = 2 means closing connection
                         if (fin_ack.fin == 2) {
                             printf("Transmission Finished.\nConnection Closed.\n");
                             close(sockfd);
