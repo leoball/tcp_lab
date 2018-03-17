@@ -25,7 +25,7 @@
 #define FILE_404_NOT_FOUND 5
 #define SYN 0
 #define DATA 1
-#define ACK 2
+#define ACK_flag 2
 #define RETRANS 3
 #define FILENAME 4
 #define FILE_404_NOT_FOUND 5

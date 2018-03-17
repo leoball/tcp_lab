@@ -227,15 +227,11 @@ int main(int argc, char *argv[]){
                     
                     if(window_curr < window_ub)
                         window_curr++;
-                    char* status = "";
-                    if(packet_sent.type == 3 && packet_sent.fin == 1)
-                        status = "FIN Retransmission";
-                    else if (packet_sent.type == 3)
-                        status = "Retransmission";
-                    else if (packet_sent.fin == 1)
-                        status = "FIN";
+                    char* suffix = "";
+                    if (packet_sent.type == 3)
+                        suffix = "Retransmission";
                     
-                    printf("Sending packet %d %d %s\n", packet_sent.sequence_num, cwnd, status);
+                    printf("Sending packet %d %d %s\n", packet_sent.sequence_num, cwnd, suffix);
                 }
             }
             resendpack:
