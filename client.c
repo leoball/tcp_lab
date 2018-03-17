@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
         
         if (response_packet.type == FILE_404_NOT_FOUND) {
             printf("Error 404: File Not Found!\n");
-            return 0;
+            goto ISSUE_FIN;
         }     
 
         if (response_packet.type == 2){
@@ -254,12 +254,12 @@ ISSUE_FIN:
                 if(check_time < 1)
                 {
                     retrans = 1;
-                    attempt++;
-                    if (attempt == 3) {
+                    if (attempt == 2) {
                         printf("Transmission finished.\nConnection closed.\n");
                         close(sockfd);
                         exit(0);
                     }
+                    attempt++;
                     continue;
                 }
                 printf("Transmission Finished.\nConnection Closed.\n");

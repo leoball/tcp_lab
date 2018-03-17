@@ -60,6 +60,8 @@ int main(int argc, char *argv[]){
     int last_flag = 0;
     int file_bufferLength;
     int last_seq_num = 0;
+    int finished = 0;
+    int file_not_found_flag = 0;
     
     // Check for correct argument length
 	if (argc != 2) {
@@ -148,7 +150,10 @@ int main(int argc, char *argv[]){
             packet_sent.type = FILE_404_NOT_FOUND;
             sendto(sockfd, &packet_sent, sizeof(packet_sent), 0, (struct sockaddr *)&cli_addr, cli_len);
             printf("404: file not found!\n");
-            exit(1);
+            last_flag = 1;
+            finished = 1;
+            file_not_found_flag = 1;
+            goto SendFin;
         }
         // read the file to a buffer and then send the data from buffer to client 
         if(fseek(fp, 0, SEEK_END) == 0){
@@ -280,16 +285,20 @@ int main(int argc, char *argv[]){
                 printf("Receiving packet %d\n", ack.sequence_num);
             }
             
-            int finished = 0;
+            
+SendFin:
             if (last_flag) {
-                int n = 0;
-                for(n=0; n < wnd_size; n++) {
-                    if (ACK_table[n] > 0) {
-                        finished = 0;
-                        break;
+                if (!file_not_found_flag)
+                {
+                    int n = 0;
+                    for(n=0; n < wnd_size; n++) {
+                        if (ACK_table[n] > 0) {
+                            finished = 0;
+                            break;
+                        }
+                        else
+                            finished = 1;
                     }
-                    else
-                        finished = 1;
                 }
                 if (finished == 0){
                     goto resendpack;
@@ -303,15 +312,17 @@ int main(int argc, char *argv[]){
                         fin_packet.fin = 1;
                         
                         fin_packet.sequence_num = last_seq_num + packet_sent.data_size + HEADER_SIZE;
-                        
+                        if(file_not_found_flag)
+                            fin_packet.sequence_num = 0;
                         sendto(sockfd, &fin_packet, sizeof(fin_packet), 0, (struct sockaddr *)&cli_addr, cli_len);
+                        /*if (!file_not_found_flag)*/
                         printf("Sending packet %d %d FIN %s\n", fin_packet.sequence_num, cwnd, suffix);
                         
                         if(check_time_out(sockfd))
                         {
                             suffix = "Retransmission";
                             attmept += 1;
-                            if (attmept <= 3)
+                            if (attmept <= 2)
                                 continue;
                             else{
                                 printf("Transmission Finished.\nConnection Closed.\n");
