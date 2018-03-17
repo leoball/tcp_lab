@@ -17,3 +17,8 @@ Workload:
 Li is in charge of the skeleton built up, socket connection, variable logics, and SYN message communication.
 Xue is in charge of sequence number implementation, server and client window implementation, and FIN.
 Both of the team members work on reliable data transfer and debugging.
+
+Note:
+For printf messages:
+I left No.# series undeleted, because I think that'll make it easier for the TA to see what's going on behind the scene.
+No.# indicates which packet at the server has been ACK'ed.

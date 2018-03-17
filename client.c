@@ -182,11 +182,11 @@ int main(int argc, char *argv[]) {
         fprintf(stdout, "Receiving packet %d\n", response_packet.seq_num);
         
         int window_curr = (response_packet.seq_num + response_packet.reuse_count*30720) / MAX_PACKET_SIZE;
-        printf("window_curr = %d\n", window_curr);
-        printf("reuse_count = %d\n", response_packet.reuse_count);
+/*        printf("window_curr = %d\n", window_curr);
+        printf("reuse_count = %d\n", response_packet.reuse_count);*/
 
         int front = window_curr - window_start;
-        printf("front = %d\n\n\n", front);
+/*        printf("front = %d\n\n\n", front);*/
         if (front < WSIZE){
             if (response_packet.fin == 1)
                 goto ISSUE_FIN;
