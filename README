@@ -1,0 +1,19 @@
+Simple Window-based Reliable Data Transfer
+Lab Report
+Professor Lu
+
+
+Zhouyang Xue 104629708
+Yang Li 904642975
+
+
+Manual
+
+1.	Made to create the executable server and client. Server is the server side of this program which sends out the file to the client whereas the client is the client side to receive the data.
+2.	./server <#port> to run the server 
+3.	./client hostname <#port> filename to get the file from the server 
+
+Workload:
+Li is in charge of the skeleton built up, socket connection, variable logics, and SYN message communication.
+Xue is in charge of sequence number implementation, server and client window implementation, and FIN.
+Both of the team members work on reliable data transfer and debugging.
